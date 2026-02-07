@@ -18,28 +18,31 @@ export function DeleteItemModal({ isOpen, item, onClose, onSuccess }) {
     setLoading(true)
     
     try {
-      console.log('Deleting item:', item._id) // Debug log
+      console.log('🗑️ Deleting item:', item._id, item.name)
       
       const response = await itemsAPI.delete(item._id)
       
-      console.log('Delete response:', response) // Debug log
+      console.log('✅ Delete response:', response.data)
       
       toast.success(`${item.name} deleted successfully! 🗑️`, {
         duration: 3000
       })
       
-      // Call onSuccess to refresh the parent list
-      if (onSuccess) {
-        await onSuccess()
-      }
-      
-      // Close modal
+      // ✅ CRITICAL: Close modal BEFORE calling onSuccess
+      // This ensures the deleted item is visually gone immediately
       onClose()
       
-    } catch (error) {
-      console.error('Delete error:', error) // Debug log
+      // ✅ CRITICAL: Wait a tiny bit for modal close animation
+      setTimeout(async () => {
+        if (onSuccess) {
+          console.log('🔄 Refreshing item list...')
+          await onSuccess()
+        }
+      }, 100)
       
-      // Better error handling
+    } catch (error) {
+      console.error('❌ Delete error:', error)
+      
       let errorMessage = 'Failed to delete item'
       
       if (error.response?.data?.message) {
@@ -49,24 +52,16 @@ export function DeleteItemModal({ isOpen, item, onClose, onSuccess }) {
       }
       
       toast.error(errorMessage, {
-        description: 'Please try again or contact support if the issue persists',
+        description: 'Please try again or contact support',
         duration: 5000
       })
       
-    } finally {
-      setLoading(false)
+      setLoading(false) // Only reset loading on error
     }
   }
 
   const handleClose = () => {
     if (!loading) {
-      onClose()
-    }
-  }
-
-  // Handle escape key
-  const handleKeyDown = (e) => {
-    if (e.key === 'Escape' && !loading) {
       onClose()
     }
   }
@@ -77,7 +72,6 @@ export function DeleteItemModal({ isOpen, item, onClose, onSuccess }) {
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={handleClose}
-      onKeyDown={handleKeyDown}
     >
       <div 
         className="bg-background rounded-lg shadow-xl w-full max-w-md"

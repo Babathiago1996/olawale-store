@@ -160,22 +160,37 @@ export default function InventoryPage() {
 
   const canEdit = user?.role === 'admin' || user?.role === 'staff'
 
+  // ✅ FIXED: Always fetch only active items
   const fetchItems = async (params = {}) => {
     setLoading(true)
     try {
+      console.log('📦 Fetching items with params:', {
+        page,
+        limit: 12,
+        search: searchQuery,
+        category: selectedCategory,
+        stockStatus: selectedStock,
+        isActive: true, // ✅ CRITICAL FIX
+        ...params
+      })
+
       const response = await itemsAPI.getAll({
         page,
         limit: 12,
         search: searchQuery,
         category: selectedCategory,
         stockStatus: selectedStock,
+        isActive: true, // ✅ CRITICAL: Only fetch active (non-deleted) items
         ...params
       })
+
+      console.log('✅ Items loaded:', response.data.data.items.length)
+      
       setItems(response.data.data.items)
       setTotalPages(response.data.pagination.pages)
     } catch (error) {
+      console.error('❌ Failed to load items:', error)
       toast.error('Failed to load items')
-      console.error(error)
     } finally {
       setLoading(false)
     }
@@ -195,39 +210,43 @@ export default function InventoryPage() {
     fetchCategories()
   }, [page])
 
+  // ✅ FIXED: Search handler
   const handleSearch = debounce((value) => {
     setSearchQuery(value)
     setPage(1)
-    fetchItems({ search: value })
+    fetchItems({ search: value, isActive: true }) // ✅ Include isActive
   }, 500)
 
+  // ✅ FIXED: Filter handler
   const handleFilter = () => {
     setPage(1)
-    fetchItems()
+    fetchItems({ isActive: true }) // ✅ Include isActive
   }
 
-  const handleItemCreated = () => {
+  // ✅ FIXED: Success handlers
+  const handleItemCreated = async () => {
+    console.log('🎉 Item created, refreshing list...')
     setShowCreateModal(false)
-    fetchItems()
-    toast.success('Item created successfully')
+    await fetchItems({ isActive: true }) // ✅ Explicitly pass isActive
   }
 
-  const handleItemUpdated = () => {
+  const handleItemUpdated = async () => {
+    console.log('✏️ Item updated, refreshing list...')
     setEditingItem(null)
-    fetchItems()
-    toast.success('Item updated successfully')
+    await fetchItems({ isActive: true }) // ✅ Explicitly pass isActive
   }
 
-  const handleItemDeleted = () => {
+  const handleItemDeleted = async () => {
+    console.log('🗑️ Item deleted, refreshing list...')
     setDeletingItem(null)
-    fetchItems()
-    toast.success('Item deleted successfully')
+    // ✅ CRITICAL: Fetch with isActive to exclude deleted items
+    await fetchItems({ isActive: true })
   }
 
-  const handleItemRestocked = () => {
+  const handleItemRestocked = async () => {
+    console.log('📦 Item restocked, refreshing list...')
     setRestockingItem(null)
-    fetchItems()
-    toast.success('Item restocked successfully')
+    await fetchItems({ isActive: true }) // ✅ Explicitly pass isActive
   }
 
   return (

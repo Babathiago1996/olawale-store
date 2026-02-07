@@ -95,6 +95,7 @@ exports.createItem = asyncHandler(async (req, res, next) => {
 /**
  * Get all items with filtering, pagination, and search
  */
+
 exports.getAllItems = asyncHandler(async (req, res, next) => {
   const {
     page = 1,
@@ -106,11 +107,19 @@ exports.getAllItems = asyncHandler(async (req, res, next) => {
     order = "desc",
     minPrice,
     maxPrice,
-    isActive,
+    isActive, // ← This can still be passed to override
   } = req.query;
 
   // Build query
   const query = {};
+
+  // ✅ FIX: Default to showing only active items unless explicitly requested otherwise
+  if (isActive !== undefined) {
+    query.isActive = isActive === "true";
+  } else {
+    // ✅ DEFAULT: Only show active items
+    query.isActive = true;
+  }
 
   if (search) {
     query.$or = [
@@ -126,10 +135,6 @@ exports.getAllItems = asyncHandler(async (req, res, next) => {
 
   if (stockStatus) {
     query.stockStatus = stockStatus;
-  }
-
-  if (isActive !== undefined) {
-    query.isActive = isActive === "true";
   }
 
   if (minPrice || maxPrice) {
