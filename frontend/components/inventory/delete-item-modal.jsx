@@ -10,39 +10,107 @@ export function DeleteItemModal({ isOpen, item, onClose, onSuccess }) {
   const [loading, setLoading] = useState(false)
 
   const handleDelete = async () => {
+    if (!item?._id) {
+      toast.error('Invalid item selected')
+      return
+    }
+
     setLoading(true)
     
     try {
-      await itemsAPI.delete(item._id)
-      onSuccess()
+      console.log('Deleting item:', item._id) // Debug log
+      
+      const response = await itemsAPI.delete(item._id)
+      
+      console.log('Delete response:', response) // Debug log
+      
+      toast.success(`${item.name} deleted successfully! 🗑️`, {
+        duration: 3000
+      })
+      
+      // Call onSuccess to refresh the parent list
+      if (onSuccess) {
+        await onSuccess()
+      }
+      
+      // Close modal
+      onClose()
+      
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete item')
+      console.error('Delete error:', error) // Debug log
+      
+      // Better error handling
+      let errorMessage = 'Failed to delete item'
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage, {
+        description: 'Please try again or contact support if the issue persists',
+        duration: 5000
+      })
+      
+    } finally {
       setLoading(false)
     }
   }
 
-  if (!isOpen) return null
+  const handleClose = () => {
+    if (!loading) {
+      onClose()
+    }
+  }
+
+  // Handle escape key
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape' && !loading) {
+      onClose()
+    }
+  }
+
+  if (!isOpen || !item) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-background rounded-lg shadow-xl w-full max-w-md">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={handleClose}
+      onKeyDown={handleKeyDown}
+    >
+      <div 
+        className="bg-background rounded-lg shadow-xl w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
         <div className="px-6 py-4 border-b flex items-center justify-between">
           <h2 className="text-xl font-semibold">Delete Item</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleClose}
+            disabled={loading}
+          >
             <X className="w-5 h-5" />
           </Button>
         </div>
 
+        {/* Body */}
         <div className="p-6">
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-destructive/10 rounded-full">
+            <div className="p-3 bg-destructive/10 rounded-full flex-shrink-0">
               <AlertTriangle className="w-6 h-6 text-destructive" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold mb-2">Are you sure?</h3>
+              <h3 className="font-semibold mb-2">Are you absolutely sure?</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                This will permanently delete <span className="font-medium text-foreground">{item?.name}</span> from your inventory. This action cannot be undone.
+                This will permanently delete{' '}
+                <span className="font-medium text-foreground">{item?.name}</span>{' '}
+                from your inventory. This action cannot be undone.
               </p>
+              
+              {/* Item Details */}
               <div className="bg-muted p-3 rounded-lg text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">SKU:</span>
@@ -50,15 +118,29 @@ export function DeleteItemModal({ isOpen, item, onClose, onSuccess }) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Current Stock:</span>
-                  <span className="font-medium">{item?.stockQuantity} {item?.unit}</span>
+                  <span className="font-medium">
+                    {item?.stockQuantity} {item?.unit}
+                  </span>
                 </div>
+                {item?.category?.name && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Category:</span>
+                    <span className="font-medium">{item.category.name}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
 
+        {/* Footer */}
         <div className="px-6 py-4 border-t flex gap-3">
-          <Button variant="outline" onClick={onClose} className="flex-1" disabled={loading}>
+          <Button 
+            variant="outline" 
+            onClick={handleClose} 
+            className="flex-1" 
+            disabled={loading}
+          >
             Cancel
           </Button>
           <Button 
@@ -73,7 +155,7 @@ export function DeleteItemModal({ isOpen, item, onClose, onSuccess }) {
                 Deleting...
               </>
             ) : (
-              'Delete Item'
+              'Delete Permanently'
             )}
           </Button>
         </div>
